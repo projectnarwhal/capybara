@@ -34,7 +34,17 @@ def init(conn, solr, schemas):
         for part in ns.split('.'):
             coll = coll[part]
 
-        solr.add([extract_fields(obj, fields) for obj in coll.find()])
+        docs = []
+
+        for obj in coll.find():
+            o = extract_fields(obj, fields)
+            o['ns'] = ns
+            o['ts'] = "0"
+            docs.append(o)
+
+        print(docs)
+
+        solr.add(docs)
 
 
 def run(mongo_host='localhost', mongo_port=27017,
@@ -76,8 +86,10 @@ def run(mongo_host='localhost', mongo_port=27017,
                     solr.delete(id=id)
                     logging.debug("Deleting document with id '%s'" % id)
                 if op['op'] in ['i', 'u']:
-                    solr_docs.append(extract_fields(op['o'],
-                                                    schemas[op['ns']]))
+                    o = extract_fields(op['o'], schemas[op['ns']])
+                    o['ns'] = op['ns']
+                    o['ts'] = 0
+                    solr_docs.append(o)
 
         if solr_docs:
             logging.debug('Sending %d docs to solr' % len(solr_docs))
